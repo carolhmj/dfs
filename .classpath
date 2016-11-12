@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/media/data/GitHub/dfs/libs/jgroups-4.0.0.Beta3.jar"/>
 	<classpathentry kind="lib" path="/media/data/GitHub/dfs/libs/amqp-client-3.6.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

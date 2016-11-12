@@ -7,24 +7,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.jgroups.Address;
-import org.jgroups.JChannel;
-import org.jgroups.blocks.RpcDispatcher;
-import org.jgroups.util.Tuple;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.BasicProperties;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.QueueingConsumer;
 
 import static java.nio.file.StandardOpenOption.*;
 
 //Classe que representa um nó de armazenamento
 public class StorageNode implements DFS{
+	public static final String queueName = "storage_queue_";
 	// Id do nó de armazenamento, é o mesmo do mapa de réplicas
 	String id;
 	//Os arquivos serão criados em uma pasta em path
 	Path path;
-	
-	//Parte remota
-	JChannel channel;
-	RpcDispatcher dispatcher;
-	
 	
 	public StorageNode(String id) throws IOException {
 		this.id = id;
@@ -35,16 +33,40 @@ public class StorageNode implements DFS{
 	}
 	
 	public void start() throws Exception {
-		channel = new JChannel();
-		channel.connect("StorageNodeCluster");
-		dispatcher = new RpcDispatcher(channel, this);
+		String requestQueueName = queueName+id;
 		
-		while(true) {
-			
+		ConnectionFactory factory = new ConnectionFactory();
+		factory.setHost("localhost");
+
+		Connection connection = factory.newConnection();
+		Channel channel = connection.createChannel();
+
+		channel.queueDeclare(requestQueueName, false, false, false, null);
+
+		channel.basicQos(1);
+
+		QueueingConsumer consumer = new QueueingConsumer(channel);
+		channel.basicConsume(requestQueueName, false, consumer);
+
+		System.out.println(" [x] Awaiting RPC requests");
+
+		while (true) {
+		    QueueingConsumer.Delivery delivery = consumer.nextDelivery();
+
+		    BasicProperties props = delivery.getProperties();
+		    AMQP.BasicProperties replyProps = new AMQP.BasicProperties().builder().correlationId(props.getCorrelationId()).build();
+		    String message = new String(delivery.getBody());
+		    
+		    //Parseia a mensagem, e cria a resposta
+		    
+		    String response = "";
+
+		    channel.basicPublish( "", props.getReplyTo(), replyProps, response.getBytes());
+
+		    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
 		}
 		
-//		dispatcher.close();
-//		channel.close();
+		
 	}
 	
 	public StorageNode(String id, String pathToDir) throws IOException {
@@ -56,10 +78,6 @@ public class StorageNode implements DFS{
 	}
 	
 	public StorageNode() { }
-
-	public Tuple<String, Address> getIdAddress() {
-		return new Tuple<String, Address>(id, channel.getAddress());
-	}
 	
 	@Override
 	public void create(String name, String content) throws IOException {
@@ -102,21 +120,6 @@ public class StorageNode implements DFS{
 			}
 			
 			node.start();
-			
-//			while (true) {}
-			
-//			//Parte remota
-
-//			
-//			
-//			try {
-//				MethodCall createCall = new MethodCall(node.getClass().getMethod("create", String.class, String.class));
-//				MethodCall readCall = new MethodCall(node.getClass().getMethod("read", String.class));
-//			} catch (NoSuchMethodException | SecurityException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			
 
 		}
 	}
