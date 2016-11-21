@@ -19,6 +19,7 @@ import static java.nio.file.StandardOpenOption.*;
 //Classe que representa um nó de armazenamento
 public class StorageNode implements DFS{
 	public static final String queueName = "storage_queue_";
+	public static final String messageSeparator = ",";
 	// Id do nó de armazenamento, é o mesmo do mapa de réplicas
 	String id;
 	//Os arquivos serão criados em uma pasta em path
@@ -31,6 +32,17 @@ public class StorageNode implements DFS{
 		//Cria uma pasta com o id do nó de armazenamento
 		Files.createDirectories(path);
 	}
+	
+	public StorageNode(String id, String pathToDir) throws IOException {
+		this.id = id;
+		Path toDir = Paths.get(pathToDir);
+		this.path = toDir.resolve(id);
+		//Cria uma pasta com o id do nó de armazenamento
+		Files.createDirectories(path);
+	}
+	
+	public StorageNode() { }
+
 	
 	public void start() throws Exception {
 		String requestQueueName = queueName+id;
@@ -48,7 +60,7 @@ public class StorageNode implements DFS{
 		QueueingConsumer consumer = new QueueingConsumer(channel);
 		channel.basicConsume(requestQueueName, false, consumer);
 
-		System.out.println(" [x] Awaiting RPC requests");
+		System.out.println("Awaiting requests on [" + requestQueueName + "]");
 
 		while (true) {
 		    QueueingConsumer.Delivery delivery = consumer.nextDelivery();
@@ -56,11 +68,35 @@ public class StorageNode implements DFS{
 		    BasicProperties props = delivery.getProperties();
 		    AMQP.BasicProperties replyProps = new AMQP.BasicProperties().builder().correlationId(props.getCorrelationId()).build();
 		    String message = new String(delivery.getBody());
+		    String response = "";
 		    
 		    //Parseia a mensagem, e cria a resposta
+		    String[] messageArgs = message.split(messageSeparator);
+		    //Criar um arquivo, retorna verdadeiro ou falso
+		    if (messageArgs[0].equals("CREATE")) {
+		    	String arqName = messageArgs[1];
+		    	String content = messageArgs[2];
+		    	boolean opResponse = create(arqName, content);
+		    	response += Boolean.toString(opResponse);
+		    }
+		    /*
+		     * Ler um arquivo, retorna o conteúdo do arquivo ou ERROR caso
+		     * não tenha sido possível ler 
+		     */
+		    else if (messageArgs[0].equals("READ")) {
+		    	String arqName = messageArgs[1];
+		    	String readContent = read(arqName);
+		    	if (readContent == null) {
+		    		response += "ERROR";
+		    	} else {
+		    		response += readContent;
+		    	}
+		    } 
+		    //Mensagem inválida, retorna ERROR
+		    else {
+		    	response += "ERROR";
+		    }
 		    
-		    String response = "";
-
 		    channel.basicPublish( "", props.getReplyTo(), replyProps, response.getBytes());
 
 		    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
@@ -68,29 +104,20 @@ public class StorageNode implements DFS{
 		
 		
 	}
-	
-	public StorageNode(String id, String pathToDir) throws IOException {
-		this.id = id;
-		Path toDir = Paths.get(pathToDir);
-		this.path = toDir.resolve(id);
-		//Cria uma pasta com o id do nó de armazenamento
-		Files.createDirectories(path);
-	}
-	
-	public StorageNode() { }
-	
+		
 	@Override
-	public void create(String name, String content) throws IOException {
+	public boolean create(String name, String content) {
 		try (BufferedWriter writer = Files.newBufferedWriter(path.resolve(name), CREATE, WRITE)) {
 			writer.write(content);
 			writer.close();
+			return true;
 		} catch (IOException e) {
-			throw e;
+			return false;
 		}
 	}
 
 	@Override
-	public String read(String name) throws IOException {
+	public String read(String name) {
 			try (BufferedReader reader = Files.newBufferedReader(path.resolve(name))) {
 			String content = "";
 			String line = "";
@@ -101,7 +128,7 @@ public class StorageNode implements DFS{
 			reader.close();
 			return content;
 		} catch (IOException e) {
-			throw e;
+			return null;
 		}
 	}
 
