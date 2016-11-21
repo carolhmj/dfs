@@ -70,6 +70,8 @@ public class StorageNode implements DFS{
 		    String message = new String(delivery.getBody());
 		    String response = "";
 		    
+		    System.out.println("Received message [" + message + "]");
+		    
 		    //Parseia a mensagem, e cria a resposta
 		    String[] messageArgs = message.split(messageSeparator);
 		    //Criar um arquivo, retorna verdadeiro ou falso
@@ -96,6 +98,8 @@ public class StorageNode implements DFS{
 		    else {
 		    	response += "ERROR";
 		    }
+		    
+		    System.out.println("Sending response [" + response + "]");
 		    
 		    channel.basicPublish( "", props.getReplyTo(), replyProps, response.getBytes());
 

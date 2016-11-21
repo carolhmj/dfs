@@ -152,7 +152,7 @@ public class ProxyNode implements DFS {
 			proxyNode = new ProxyNode(args[0]);
 			proxyNode.start();
 			proxyNode.create("lala.txt", "lalala");
-			proxyNode.read("lala.txt");
+			System.out.println(proxyNode.read("lala.txt"));
 		}
 	}
 
