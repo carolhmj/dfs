@@ -18,9 +18,10 @@ import static java.nio.file.StandardOpenOption.*;
 
 //Classe que representa um nó de armazenamento
 public class StorageNode implements DFS{
-	public static final String queueName = "storage_queue";
+	public static final String queueBasicName = "storage_queue";
 	public static final String messageSeparator = ",";
-	public static final String storageEx = "dfs_exchange";
+	//Queue name with id
+	public String queueTrueName;
 	// Id do nó de armazenamento, é o mesmo do mapa de réplicas
 	String id;
 	//Os arquivos serão criados em uma pasta em path
@@ -28,6 +29,7 @@ public class StorageNode implements DFS{
 	
 	public StorageNode(String id) throws IOException {
 		this.id = id;
+		this.queueTrueName = queueBasicName+"."+id;
 		String pathString = id;
 		this.path = Paths.get(pathString);
 		//Cria uma pasta com o id do nó de armazenamento
@@ -36,6 +38,7 @@ public class StorageNode implements DFS{
 	
 	public StorageNode(String id, String pathToDir) throws IOException {
 		this.id = id;
+		this.queueTrueName = queueBasicName+"."+id;
 		Path toDir = Paths.get(pathToDir);
 		this.path = toDir.resolve(id);
 		//Cria uma pasta com o id do nó de armazenamento
@@ -46,25 +49,23 @@ public class StorageNode implements DFS{
 
 	
 	public void start() throws Exception {
-		String requestQueueName = queueName+"."+id;
-		System.out.println("AAAAAAAAAAAAAAAAA");
-		
+	
 		ConnectionFactory factory = new ConnectionFactory();
 		factory.setHost("localhost");
 
 		Connection connection = factory.newConnection();
 		Channel channel = connection.createChannel();
-		channel.exchangeDeclare(storageEx, "topic");
+		channel.exchangeDeclare(exchangeName, "topic");
 
-		channel.queueDeclare(requestQueueName, false, false, false, null);
-		channel.queueBind(requestQueueName, storageEx, requestQueueName);
+		channel.queueDeclare(queueTrueName, false, false, false, null);
+		channel.queueBind(queueTrueName, exchangeName, queueTrueName);
 		
 		channel.basicQos(1);
 
 		QueueingConsumer consumer = new QueueingConsumer(channel);
-		channel.basicConsume(requestQueueName, false, consumer);
+		channel.basicConsume(queueTrueName, false, consumer);
 
-		System.out.println("Awaiting requests on [" + requestQueueName + "]");
+		System.out.println("Awaiting requests on [" + queueTrueName + "]");
 
 		while (true) {
 		    QueueingConsumer.Delivery delivery = consumer.nextDelivery();

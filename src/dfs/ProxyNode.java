@@ -23,8 +23,10 @@ import com.rabbitmq.client.ShutdownSignalException;
 
 //Classe que representa um nó Proxy
 public class ProxyNode implements DFS {
-	public static final String requestQueueName = "proxy_queue";
+	public static final String queueBasicName = "proxy_queue";
 	public static final String messageSeparator = ",";
+	
+	public String queueTrueName;
 	//Id do nó proxy
 	String id;
 	
@@ -37,15 +39,12 @@ public class ProxyNode implements DFS {
 	Channel receiveChannel;
 	Queue receiveQueue;
 	String replyQueueName;
-	String storageRequestQueueName = StorageNode.queueName;
+	String storageRequestQueueName = StorageNode.queueBasicName;
 	QueueingConsumer consumer;
-	
-	//Bindings
-	//Receber mensagens do BalanceNode
-	public static final String balanceBinding = "BALANCE";
 
 	public ProxyNode(String id, String pathToMapFileString) throws IOException {
 		this.id = id;
+		this.queueTrueName = queueBasicName + "." + id;
 //		parseMapFile(pathToMapFileString);
 	}
 	
@@ -54,23 +53,23 @@ public class ProxyNode implements DFS {
 	    factory.setHost("localhost");
 	    connection = factory.newConnection();
 	    channel = connection.createChannel();
-	    channel.exchangeDeclare(StorageNode.storageEx, "topic");
+	    channel.exchangeDeclare(DFS.exchangeName, "topic");
 
 	    replyQueueName = channel.queueDeclare().getQueue();
-	    channel.queueBind(replyQueueName, StorageNode.storageEx, "proxy_queue"+"."+id);
+	    channel.queueBind(replyQueueName, DFS.exchangeName, queueTrueName);
 	    
 	    consumer = new QueueingConsumer(channel);
 	    channel.basicConsume(replyQueueName, true, consumer);
 	    
-		channel.queueDeclare(requestQueueName, false, false, false, null);
-		channel.queueBind(requestQueueName, StorageNode.storageEx, "proxy_queue");
+		channel.queueDeclare(queueBasicName, false, false, false, null);
+		channel.queueBind(queueBasicName, DFS.exchangeName, queueTrueName);
 		channel.basicQos(1);
 
 		
 		QueueingConsumer consumer = new QueueingConsumer(channel);
-		channel.basicConsume(requestQueueName, false, consumer);
+		channel.basicConsume(queueBasicName, false, consumer);
 
-		System.out.println("Awaiting requests on [" + "proxy_queue"+"."+id + "]");
+		System.out.println("Awaiting requests on [" + queueTrueName + "]");
 
 		while (true) {
 		    QueueingConsumer.Delivery delivery = consumer.nextDelivery();
@@ -146,10 +145,12 @@ public class ProxyNode implements DFS {
 	    String message = "";
 	    
 	    message = message + "CREATE" + messageSeparator + name + messageSeparator + content;
-	    
+	    Vector<String> ids = getIds(name);
 	    try {
-			channel.basicPublish("", storageRequestQueueName + ".1", props, message.getBytes());
-			System.out.println("Sent request for [" + storageRequestQueueName + ".1" + "] Awaiting response...");
+	    	for (String id : ids) {
+				channel.basicPublish("", storageRequestQueueName + "." + id, props, message.getBytes());
+				System.out.println("Sent request for [" + storageRequestQueueName + "." + ids + "] Awaiting response...");
+	    	}
 	    } catch (IOException e1) {
 			e1.printStackTrace();
 			response = new Boolean(false).toString();
@@ -190,9 +191,13 @@ public class ProxyNode implements DFS {
 	    
 	    message = message + "READ" + messageSeparator + name;
 	    
+	    Vector<String> ids = getIds(name);
 	    try {
-			channel.basicPublish("", storageRequestQueueName + ".1", props, message.getBytes());
-		} catch (IOException e1) {
+	    	for (String id : ids) {
+				channel.basicPublish("", storageRequestQueueName + "." + id, props, message.getBytes());
+				System.out.println("Sent request for [" + storageRequestQueueName + "." + ids + "] Awaiting response...");
+	    	}
+	    } catch (IOException e1) {
 			e1.printStackTrace();
 			response = "ERROR";
 		}
@@ -217,6 +222,14 @@ public class ProxyNode implements DFS {
 	    }
 	    return response;
 
+	}
+	/* Tira o hash MD5 do arquivo, divide pelo número de nós de armazenamento,
+	 * procura os IDs no arquivo de réplicas e retorna os ids corretos
+	 */
+	public Vector<String> getIds(String arqName) {
+		Vector<String> ids = new Vector<>();
+		ids.add("1");
+		return ids;
 	}
 	
 	public static void main(String args[]) throws Exception {
