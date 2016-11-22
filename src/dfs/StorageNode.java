@@ -18,8 +18,9 @@ import static java.nio.file.StandardOpenOption.*;
 
 //Classe que representa um nó de armazenamento
 public class StorageNode implements DFS{
-	public static final String queueName = "storage_queue_";
+	public static final String queueName = "storage_queue";
 	public static final String messageSeparator = ",";
+	public static final String storageEx = "dfs_exchange";
 	// Id do nó de armazenamento, é o mesmo do mapa de réplicas
 	String id;
 	//Os arquivos serão criados em uma pasta em path
@@ -45,16 +46,19 @@ public class StorageNode implements DFS{
 
 	
 	public void start() throws Exception {
-		String requestQueueName = queueName+id;
+		String requestQueueName = queueName+"."+id;
+		System.out.println("AAAAAAAAAAAAAAAAA");
 		
 		ConnectionFactory factory = new ConnectionFactory();
 		factory.setHost("localhost");
 
 		Connection connection = factory.newConnection();
 		Channel channel = connection.createChannel();
+		channel.exchangeDeclare(storageEx, "topic");
 
 		channel.queueDeclare(requestQueueName, false, false, false, null);
-
+		channel.queueBind(requestQueueName, storageEx, requestQueueName);
+		
 		channel.basicQos(1);
 
 		QueueingConsumer consumer = new QueueingConsumer(channel);
