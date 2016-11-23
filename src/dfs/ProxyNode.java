@@ -61,8 +61,10 @@ public class ProxyNode implements DFS {
 	    consumer = new QueueingConsumer(channel);
 	    channel.basicConsume(replyQueueName, true, consumer);
 	    
-		channel.queueDeclare(queueBasicName, false, false, false, null);
-		channel.queueBind(queueBasicName, DFS.exchangeName, queueTrueName);
+		channel.queueDeclare(queueTrueName, false, false, false, null);
+//		String queuePattern = "#.proxy_queue.#";
+		channel.queueBind(queueTrueName, DFS.exchangeName, queueTrueName);
+		channel.queueBind(queueTrueName, DFS.exchangeName, queueBasicName);
 		channel.basicQos(1);
 
 		
@@ -105,7 +107,7 @@ public class ProxyNode implements DFS {
 		    }
 		    //Descobrir o ID
 		    else if (messageArgs[0].equals("ID")){
-		    	response += "That's my id";
+		    	response += id;
 		    }
 		    //Mensagem inválida, retorna ERROR
 		    else {

@@ -1,6 +1,7 @@
 package dfs;
 
 import java.io.IOException;
+import java.util.Scanner;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -43,14 +44,96 @@ public class Client implements DFS {
 	
 	@Override
 	public boolean create(String name, String content) {
-		// TODO Auto-generated method stub
-		return false;
+		//Pergunta um ID pro nó balanceador
+		String proxyId = getProxyId();
+		String proxyQueue = ProxyNode.queueBasicName + "." + proxyId;
+		
+		String response = null;
+	    String corrId = java.util.UUID.randomUUID().toString();
+
+	    BasicProperties props = new BasicProperties
+	                                .Builder()
+	                                .correlationId(corrId)
+	                                .replyTo(replyQueueName)
+	                                .build();
+
+	    //Making the message
+	    String message = "";
+	    
+	    message = message + "CREATE" + "," + name + "," + content;
+	    	    
+	    try {
+	    	channel.basicPublish(DFS.exchangeName, proxyQueue, props, message.getBytes());
+			System.out.println("Sent request for [" + proxyQueue + "] Awaiting response...");
+	    } catch (IOException e1) {
+			e1.printStackTrace();
+			response = "ERROR";
+		}
+
+	    while (true) {
+	        QueueingConsumer.Delivery delivery;
+			try {
+				delivery = consumer.nextDelivery();
+		        if (delivery.getProperties().getCorrelationId().equals(corrId)) {
+		            response = new String(delivery.getBody());
+		            break;
+		        }
+		        
+			} catch (ShutdownSignalException | ConsumerCancelledException | InterruptedException e) {
+				e.printStackTrace();
+				response = "ERROR";
+			}
+	    }
+
+	    //Parse the response
+		if (response.equals("ERROR")) { return false; }
+		return Boolean.parseBoolean(response);
 	}
 
 	@Override
 	public String read(String name) {
-		// TODO Auto-generated method stub
-		return null;
+		//Pergunta um ID pro nó balanceador
+		String proxyId = getProxyId();
+		String proxyQueue = ProxyNode.queueBasicName + "." + proxyId;
+		
+		String response = null;
+	    String corrId = java.util.UUID.randomUUID().toString();
+
+	    BasicProperties props = new BasicProperties
+	                                .Builder()
+	                                .correlationId(corrId)
+	                                .replyTo(replyQueueName)
+	                                .build();
+
+	    //Making the message
+	    String message = "";
+	    
+	    message = message + "READ" + "," + name;
+	    	    
+	    try {
+	    	channel.basicPublish(DFS.exchangeName, proxyQueue, props, message.getBytes());
+			System.out.println("Sent request for [" + proxyQueue + "] Awaiting response...");
+	    } catch (IOException e1) {
+			e1.printStackTrace();
+			response = "ERROR";
+		}
+
+	    while (true) {
+	        QueueingConsumer.Delivery delivery;
+			try {
+				delivery = consumer.nextDelivery();
+		        if (delivery.getProperties().getCorrelationId().equals(corrId)) {
+		            response = new String(delivery.getBody());
+		            break;
+		        }
+		        
+			} catch (ShutdownSignalException | ConsumerCancelledException | InterruptedException e) {
+				e.printStackTrace();
+				response = "ERROR";
+			}
+	    }
+
+		return response;
 	}
 	
 	//Função pra fazer a solicitação de um id de proxy
@@ -98,4 +181,45 @@ public class Client implements DFS {
 	    return response;
 	}
 
+	public static void main(String[] args) {
+		Scanner scanner = new Scanner(System.in);
+		boolean finished = false;
+		
+		Client client = new Client();
+		
+		while (!finished) {
+			System.out.println("Options:");
+			System.out.println("(C)reate");
+			System.out.println("(R)ead");
+			System.out.println("(Q)uit");
+			
+			String option = scanner.nextLine();
+			
+			switch (option) {
+			case "C":
+			case "c":
+				System.out.println("Insert the archive name:");
+				String name = scanner.nextLine();
+				System.out.println("Insert the archive contents:");
+				String content = scanner.nextLine();
+				client.create(name, content);
+				break;
+			case "R":
+			case "r":
+				System.out.println("Insert the archive name:");
+				String nameR = scanner.nextLine();
+				client.read(nameR);
+				break;
+			case "Q":
+			case "q":
+				finished = true;
+				break;
+			default:
+				System.out.println("Incorrect option");
+				break;
+			}
+		}
+		
+		scanner.close();
+	}
 }

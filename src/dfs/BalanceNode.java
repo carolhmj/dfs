@@ -55,12 +55,14 @@ public class BalanceNode {
 	    
 	    message = message + "ID";
 	    
+	    
 //	    String messageQueue1 = "CREATE,message1.txt,message1";
 //	    String messageQueue2 = "CREATE,message2.txt,message2";
 //	    String messageQueue3 = "CREATE,message_p_os_dois.txt,mensagem para os dois";
 	    
 	    try {
-	    	channel.basicPublish(DFS.exchangeName, "proxy_queue.*", props, message.getBytes());
+	    	//Id era pra ser recebido pelas 2 filas de mensagens, mas só uma tá recebendo
+	    	channel.basicPublish(DFS.exchangeName, "proxy_queue", props, message.getBytes());
 //	    	channel.basicPublish(DFS.exchangeName, "proxy_queue.1", props, messageQueue1.getBytes());
 //			channel.basicPublish(DFS.exchangeName, "proxy_queue.2", props, messageQueue2.getBytes());
 //			channel.basicPublish(DFS.exchangeName, "proxy_queue.*", props, messageQueue3.getBytes());
