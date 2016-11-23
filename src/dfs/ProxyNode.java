@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -31,7 +33,7 @@ public class ProxyNode implements DFS {
 	String id;
 	
 	//Mapa de réplicas
-	
+	ArrayList<ArrayList<String>> repmap = new ArrayList<ArrayList<String>>();
 	
 	//RPC
 	Connection connection;
@@ -45,6 +47,8 @@ public class ProxyNode implements DFS {
 	public ProxyNode(String id, String pathToMapFileString) throws IOException {
 		this.id = id;
 		this.queueTrueName = queueBasicName + "." + id;
+		parseMapFile(pathToMapFileString);
+
 //		parseMapFile(pathToMapFileString);
 	}
 	
@@ -125,7 +129,13 @@ public class ProxyNode implements DFS {
 	
 	private void parseMapFile(String pathToMapFileString) throws IOException {
 		Path pathToMapFile = Paths.get(pathToMapFileString);
+		String line = "";
 		try (BufferedReader reader = Files.newBufferedReader(pathToMapFile)) {
+			while ((line = reader.readLine()) != null){
+				ArrayList<String> currArray = new ArrayList<String>(Arrays.asList(line.split(",")));
+				this.repmap.add(currArray);
+			}
+			
 			
 		} catch (IOException e) {
 			
