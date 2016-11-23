@@ -73,7 +73,7 @@ public class ProxyNode implements DFS {
 
 		
 		QueueingConsumer consumer = new QueueingConsumer(channel);
-		channel.basicConsume(queueBasicName, false, consumer);
+		channel.basicConsume(queueTrueName, false, consumer);
 
 		System.out.println("Awaiting requests on [" + queueTrueName + "]");
 
