@@ -11,60 +11,69 @@ import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.AMQP.BasicProperties;
 
 /*
- * Nó de balanceamento. Ele descobre o id de um proxy
- * e o retorna para o cliente
+ * Classe que representa um cliente. ele pede um id para o balanceador e com o id
+ * manda solicitações para o proxy
  */
-public class BalanceNode {
-	//Nome da fila onde ele vai receber requests dos clientes
-	public static final String queueName = "balance_node";
-	public static final String messageSeparator = ",";
 
-	//Nome da fila de onde ele vai receber resposta dos proxys
-	String responseQueueName;
+public class Client implements DFS {
+	public static final String queueName = "client_queue"; 
 	
 	//RPC
 	Connection connection;
 	Channel channel;
-	String proxyRequestQueueName = ProxyNode.queueBasicName;
+	String replyQueueName;
 	QueueingConsumer consumer;
 	
-	public void start() throws Exception {		
+	public void start() throws Exception {
 		ConnectionFactory factory = new ConnectionFactory();
 	    factory.setHost("localhost");
 	    connection = factory.newConnection();
 	    channel = connection.createChannel();
 	    channel.exchangeDeclare(DFS.exchangeName, "topic");
 
-	    responseQueueName = channel.queueDeclare().getQueue(); 
+	    replyQueueName = channel.queueDeclare().getQueue();
+	    channel.queueBind(replyQueueName, DFS.exchangeName, queueName);
+	    
 	    consumer = new QueueingConsumer(channel);
-	    channel.basicConsume(responseQueueName, true, consumer);
+	    channel.basicConsume(replyQueueName, true, consumer);
+	    
+		channel.basicQos(1);
+
 	}
 	
-	public String getNodeId() {
+	@Override
+	public boolean create(String name, String content) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public String read(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	//Função pra fazer a solicitação de um id de proxy
+	public String getProxyId() {
+		String balanceQueueName = BalanceNode.queueName;
+		
 		String response = null;
 	    String corrId = java.util.UUID.randomUUID().toString();
 
 	    BasicProperties props = new BasicProperties
 	                                .Builder()
 	                                .correlationId(corrId)
-	                                .replyTo(responseQueueName)
+	                                .replyTo(replyQueueName)
 	                                .build();
 
 	    //Making the message
 	    String message = "";
 	    
 	    message = message + "ID";
-	    
-//	    String messageQueue1 = "CREATE,message1.txt,message1";
-//	    String messageQueue2 = "CREATE,message2.txt,message2";
-//	    String messageQueue3 = "CREATE,message_p_os_dois.txt,mensagem para os dois";
-	    
+	    	    
 	    try {
-	    	channel.basicPublish(DFS.exchangeName, "proxy_queue.*", props, message.getBytes());
-//	    	channel.basicPublish(DFS.exchangeName, "proxy_queue.1", props, messageQueue1.getBytes());
-//			channel.basicPublish(DFS.exchangeName, "proxy_queue.2", props, messageQueue2.getBytes());
-//			channel.basicPublish(DFS.exchangeName, "proxy_queue.*", props, messageQueue3.getBytes());
-			System.out.println("Sent request for [" + proxyRequestQueueName + "] Awaiting response...");
+	    	channel.basicPublish(DFS.exchangeName, balanceQueueName, props, message.getBytes());
+			System.out.println("Sent request for [" + balanceQueueName + "] Awaiting response...");
 	    } catch (IOException e1) {
 			e1.printStackTrace();
 			response = "ERROR";
@@ -88,10 +97,5 @@ public class BalanceNode {
 	    System.out.println("Received response [" + response + "]");
 	    return response;
 	}
-	
-	public static void main(String[] args) throws Exception {
-		BalanceNode balance = new BalanceNode();
-		balance.start();
-		balance.getNodeId();
-	}
+
 }
