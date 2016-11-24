@@ -2,6 +2,7 @@ package dfs;
 
 import java.io.IOException;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -38,6 +39,44 @@ public class BalanceNode {
 	    responseQueueName = channel.queueDeclare().getQueue(); 
 	    consumer = new QueueingConsumer(channel);
 	    channel.basicConsume(responseQueueName, true, consumer);
+	    
+		channel.queueDeclare(queueName, false, false, false, null);
+		channel.queueBind(queueName, DFS.exchangeName, queueName);
+		channel.basicQos(1);
+
+		
+		QueueingConsumer receptorConsumer = new QueueingConsumer(channel);
+		channel.basicConsume(queueName, false, receptorConsumer);
+
+		System.out.println("Awaiting requests on [" + queueName + "]");
+
+		while (true) {
+		    QueueingConsumer.Delivery delivery = receptorConsumer.nextDelivery();
+
+		    BasicProperties props = delivery.getProperties();
+		    AMQP.BasicProperties replyProps = new AMQP.BasicProperties().builder().correlationId(props.getCorrelationId()).build();
+		    String message = new String(delivery.getBody());
+		    String response = "";
+		    
+		    System.out.println("Received message [" + message + "]");
+		    
+		    //Parseia a mensagem, e cria a resposta
+		    String[] messageArgs = message.split(messageSeparator);
+		    //Cliente quer algum id de proxy
+		    if (messageArgs[0].equals("ID")) {
+		    	response += getNodeId();
+		    }
+		    //Mensagem inválida, retorna ERROR
+		    else {
+		    	response += "ERROR";
+		    }
+		    System.out.println("Sending response [" + response + "]");
+		    
+		    channel.basicPublish("", props.getReplyTo(), replyProps, response.getBytes());
+
+		    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+		}		
+
 	}
 	
 	public String getNodeId() {
@@ -94,6 +133,6 @@ public class BalanceNode {
 	public static void main(String[] args) throws Exception {
 		BalanceNode balance = new BalanceNode();
 		balance.start();
-		balance.getNodeId();
+//		balance.getNodeId();
 	}
 }

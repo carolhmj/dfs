@@ -181,11 +181,12 @@ public class Client implements DFS {
 	    return response;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		Scanner scanner = new Scanner(System.in);
 		boolean finished = false;
 		
 		Client client = new Client();
+		client.start();
 		
 		while (!finished) {
 			System.out.println("Options:");
@@ -202,13 +203,14 @@ public class Client implements DFS {
 				String name = scanner.nextLine();
 				System.out.println("Insert the archive contents:");
 				String content = scanner.nextLine();
-				client.create(name, content);
+				String result = client.create(name, content)? "success" : "fail";
+				System.out.println("The creation of " + name + "was a " + result);
 				break;
 			case "R":
 			case "r":
 				System.out.println("Insert the archive name:");
 				String nameR = scanner.nextLine();
-				client.read(nameR);
+				System.out.print("The contents of the archive are: " + client.read(nameR));
 				break;
 			case "Q":
 			case "q":
