@@ -28,13 +28,20 @@ public class BalanceNode {
 	Channel channel;
 	String proxyRequestQueueName = ProxyNode.queueBasicName;
 	QueueingConsumer consumer;
+	String ip = "localhost";
+	public BalanceNode(String ip) {
+		this.ip = ip;
+	}
 	
+	public BalanceNode() {
+	}
+
 	public void start() throws Exception {		
 		ConnectionFactory factory = new ConnectionFactory();
-	    factory.setHost("localhost");
+	    factory.setHost(ip);
 	    connection = factory.newConnection();
 	    channel = connection.createChannel();
-	    channel.exchangeDeclare(DFS.exchangeName, "topic");
+	    channel.exchangeDeclare(DFS.exchangeName, "topic", false, false, false, null);
 
 	    responseQueueName = channel.queueDeclare().getQueue(); 
 	    consumer = new QueueingConsumer(channel);
@@ -95,16 +102,8 @@ public class BalanceNode {
 	    message = message + "ID";
 	    
 	    
-//	    String messageQueue1 = "CREATE,message1.txt,message1";
-//	    String messageQueue2 = "CREATE,message2.txt,message2";
-//	    String messageQueue3 = "CREATE,message_p_os_dois.txt,mensagem para os dois";
-	    
 	    try {
-	    	//Id era pra ser recebido pelas 2 filas de mensagens, mas só uma tá recebendo
 	    	channel.basicPublish(DFS.exchangeName, "proxy_queue", props, message.getBytes());
-//	    	channel.basicPublish(DFS.exchangeName, "proxy_queue.1", props, messageQueue1.getBytes());
-//			channel.basicPublish(DFS.exchangeName, "proxy_queue.2", props, messageQueue2.getBytes());
-//			channel.basicPublish(DFS.exchangeName, "proxy_queue.*", props, messageQueue3.getBytes());
 			System.out.println("Sent request for [" + proxyRequestQueueName + "] Awaiting response...");
 	    } catch (IOException e1) {
 			e1.printStackTrace();
@@ -131,8 +130,12 @@ public class BalanceNode {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		BalanceNode balance = new BalanceNode();
+		BalanceNode balance;
+		if (args.length == 0) {
+			balance = new BalanceNode();
+		} else {
+			balance = new BalanceNode(args[0]);
+		}
 		balance.start();
-//		balance.getNodeId();
 	}
 }

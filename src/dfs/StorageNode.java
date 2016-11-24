@@ -27,6 +27,8 @@ public class StorageNode implements DFS{
 	//Os arquivos serão criados em uma pasta em path
 	Path path;
 	
+	String ip = "localhost";
+	
 	public StorageNode(String id) throws IOException {
 		this.id = id;
 		this.queueTrueName = queueBasicName+"."+id;
@@ -44,6 +46,16 @@ public class StorageNode implements DFS{
 		//Cria uma pasta com o id do nó de armazenamento
 		Files.createDirectories(path);
 	}
+
+	public StorageNode(String id, String pathToDir, String ip) throws IOException {
+		this.id = id;
+		this.queueTrueName = queueBasicName+"."+id;
+		Path toDir = Paths.get(pathToDir);
+		this.path = toDir.resolve(id);
+		this.ip = ip;
+		//Cria uma pasta com o id do nó de armazenamento
+		Files.createDirectories(path);
+	}
 	
 	public StorageNode() { }
 
@@ -51,11 +63,11 @@ public class StorageNode implements DFS{
 	public void start() throws Exception {
 	
 		ConnectionFactory factory = new ConnectionFactory();
-		factory.setHost("localhost");
+		factory.setHost(ip);
 
 		Connection connection = factory.newConnection();
 		Channel channel = connection.createChannel();
-		channel.exchangeDeclare(exchangeName, "topic");
+		channel.exchangeDeclare(exchangeName, "topic", false, false, false, null);
 
 		channel.queueDeclare(queueTrueName, false, false, false, null);
 		channel.queueBind(queueTrueName, exchangeName, queueTrueName);
@@ -143,16 +155,20 @@ public class StorageNode implements DFS{
 
 	public static void main(String[] args) throws Exception {
 		if (args.length < 1) {
-			System.out.println("Usage: StorageNode [node id] [(OPTIONAL) path to file]");
+			System.out.println("Usage: StorageNode [node id] [(OPTIONAL) path to file] [(OPTIONAL) ip]");
 		} else {
 			String name = args[0];
 			StorageNode node;
 			
 			if (args.length == 1) {
 				node = new StorageNode(name);
-			} else {
+			} else if (args.length == 2){
 				String path = args[1];
 				node = new StorageNode(name, path);
+			} else {
+				String path = args[1];
+				String ip = args[2];
+				node = new StorageNode(name, path, ip);
 			}
 			
 			node.start();

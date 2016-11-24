@@ -24,10 +24,18 @@ public class Client implements DFS {
 	Channel channel;
 	String replyQueueName;
 	QueueingConsumer consumer;
+	String ip = "localhost";
 	
+	public Client(String ip) {
+		this.ip = ip;
+	}
+	
+	public Client() {
+	}
+
 	public void start() throws Exception {
 		ConnectionFactory factory = new ConnectionFactory();
-	    factory.setHost("localhost");
+	    factory.setHost(ip);
 	    connection = factory.newConnection();
 	    channel = connection.createChannel();
 	    channel.exchangeDeclare(DFS.exchangeName, "topic");
@@ -185,7 +193,12 @@ public class Client implements DFS {
 		Scanner scanner = new Scanner(System.in);
 		boolean finished = false;
 		
-		Client client = new Client();
+		Client client;
+		if (args.length == 0) {
+			client = new Client();
+		} else {
+			client = new Client(args[0]);
+		}
 		client.start();
 		
 		while (!finished) {
@@ -204,13 +217,13 @@ public class Client implements DFS {
 				System.out.println("Insert the archive contents:");
 				String content = scanner.nextLine();
 				String result = client.create(name, content)? "success" : "fail";
-				System.out.println("The creation of " + name + "was a " + result);
+				System.out.println("The creation of " + name + " was a " + result);
 				break;
 			case "R":
 			case "r":
 				System.out.println("Insert the archive name:");
 				String nameR = scanner.nextLine();
-				System.out.print("The contents of the archive are: " + client.read(nameR));
+				System.out.println("The contents of the archive are: " + client.read(nameR));
 				break;
 			case "Q":
 			case "q":

@@ -40,6 +40,7 @@ public class ProxyNode implements DFS {
 	ArrayList<ArrayList<String>> repmap = new ArrayList<ArrayList<String>>();
 	
 	//RPC
+	String ip = "localhost";
 	Connection connection;
 	Channel channel;
 	Channel receiveChannel;
@@ -47,21 +48,26 @@ public class ProxyNode implements DFS {
 	String replyQueueName;
 	String storageRequestQueueName = StorageNode.queueBasicName;
 	QueueingConsumer consumer;
-
+	
 	public ProxyNode(String id, String pathToMapFileString) throws IOException {
 		this.id = id;
 		this.queueTrueName = queueBasicName + "." + id;
 		parseMapFile(pathToMapFileString);
-
-//		parseMapFile(pathToMapFileString);
+	}
+	
+	public ProxyNode(String id, String pathToMapFileString, String ip) throws IOException {
+		this.id = id;
+		this.queueTrueName = queueBasicName + "." + id;
+		this.ip = ip;
+		parseMapFile(pathToMapFileString);
 	}
 	
 	public void start() throws Exception {		
 		ConnectionFactory factory = new ConnectionFactory();
-	    factory.setHost("localhost");
+	    factory.setHost(ip);
 	    connection = factory.newConnection();
 	    channel = connection.createChannel();
-	    channel.exchangeDeclare(DFS.exchangeName, "topic");
+	    channel.exchangeDeclare(DFS.exchangeName, "topic", false, false, false, null);
 
 	    replyQueueName = channel.queueDeclare().getQueue();
 	    channel.queueBind(replyQueueName, DFS.exchangeName, queueTrueName);
@@ -165,7 +171,7 @@ public class ProxyNode implements DFS {
 	    try {
 	    	for (String id : ids) {
 				channel.basicPublish("", storageRequestQueueName + "." + id, props, message.getBytes());
-				System.out.println("Sent request for [" + storageRequestQueueName + "." + ids + "] Awaiting response...");
+				System.out.println("Sent request for [" + storageRequestQueueName + "." + id + "] Awaiting response...");
 	    	}
 	    } catch (IOException e1) {
 			e1.printStackTrace();
@@ -249,7 +255,7 @@ public class ProxyNode implements DFS {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 			arqNameBytes = arqName.getBytes("UTF-8");
 			BigInteger hashNumber = new BigInteger(md.digest(arqNameBytes));
-			lineIndex = (hashNumber.remainder(BigInteger.valueOf(this.repmap.size()))).intValue();
+			lineIndex = Math.abs((hashNumber.remainder(BigInteger.valueOf(this.repmap.size()))).intValue());
 
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
@@ -265,10 +271,14 @@ public class ProxyNode implements DFS {
 	
 	public static void main(String args[]) throws Exception {
 		if (args.length < 2) {
-			System.out.println("Usage: ProxyNode [id] [path to map archive]");
+			System.out.println("Usage: ProxyNode [id] [path to map archive] (OPTIONAL)[ip]");
 		} else {
 			ProxyNode proxyNode;
-			proxyNode = new ProxyNode(args[0], args[1]);
+			if (args.length == 2) {
+				proxyNode = new ProxyNode(args[0], args[1]);
+			} else {
+				proxyNode = new ProxyNode(args[0], args[1], args[2]);
+			}
 			proxyNode.start();
 //			proxyNode.create("lala.txt", "lalala");
 //			System.out.println(proxyNode.read("lala.txt"));
