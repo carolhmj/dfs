@@ -2,9 +2,13 @@ package dfs;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -157,7 +161,7 @@ public class ProxyNode implements DFS {
 	    String message = "";
 	    
 	    message = message + "CREATE" + messageSeparator + name + messageSeparator + content;
-	    Vector<String> ids = getIds(name);
+	    ArrayList<String> ids = getIds(name);
 	    try {
 	    	for (String id : ids) {
 				channel.basicPublish("", storageRequestQueueName + "." + id, props, message.getBytes());
@@ -203,7 +207,7 @@ public class ProxyNode implements DFS {
 	    
 	    message = message + "READ" + messageSeparator + name;
 	    
-	    Vector<String> ids = getIds(name);
+	    ArrayList<String> ids = getIds(name);
 	    try {
 	    	for (String id : ids) {
 				channel.basicPublish("", storageRequestQueueName + "." + id, props, message.getBytes());
@@ -238,10 +242,25 @@ public class ProxyNode implements DFS {
 	/* Tira o hash MD5 do arquivo, divide pelo número de nós de armazenamento,
 	 * procura os IDs no arquivo de réplicas e retorna os ids corretos
 	 */
-	public Vector<String> getIds(String arqName) {
-		Vector<String> ids = new Vector<>();
-		ids.add("1");
-		return ids;
+	public ArrayList<String> getIds(String arqName) {
+		byte[] arqNameBytes;
+		int lineIndex = 0;
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			arqNameBytes = arqName.getBytes("UTF-8");
+			BigInteger hashNumber = new BigInteger(md.digest(arqNameBytes));
+			lineIndex = (hashNumber.remainder(BigInteger.valueOf(this.repmap.size()))).intValue();
+
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return this.repmap.get(lineIndex);
+
 	}
 	
 	public static void main(String args[]) throws Exception {
