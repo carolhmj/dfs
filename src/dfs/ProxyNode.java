@@ -249,8 +249,9 @@ public class ProxyNode implements DFS {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 			arqNameBytes = arqName.getBytes("UTF-8");
 			BigInteger hashNumber = new BigInteger(md.digest(arqNameBytes));
-			lineIndex = (hashNumber.remainder(BigInteger.valueOf(this.repmap.size()))).intValue();
-
+			lineIndex = (hashNumber.remainder(BigInteger.valueOf(this.repmap.size()-1))).intValue();
+			
+			
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
